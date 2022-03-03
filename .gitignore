@@ -132,6 +132,7 @@ dmypy.json
 .pyre/
 
 # Sensitive files
+axie-scholar-utilities/docker/files/*
 payments.json
 secrets.json
 trezor_config.json
