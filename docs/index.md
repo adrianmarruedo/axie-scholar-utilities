@@ -35,14 +35,14 @@ If you are planning to use TREZOR, you must follow the Poetry installation.
 ## Install Using Docker
 This is the recomended way of installing and using my tool. Follow one of these links for installing with docker:
 
-- [Windows and Docker installation](./pages/install_docker_win.html)
-- [MacOs and Docker installation](./pages/install_docker_mac.html)
+- [Windows and Docker installation](./pages/install_docker_win.md)
+- [MacOs and Docker installation](./pages/install_docker_mac.md)
 
 ## Install Using Poetry
 If for some reason you want to install using python and poetry, you will need to follow these links:
 
-- [Windows and Poetry installation](./pages/install_poetry_win.html)
-- [MacOs and Poetry installation](./pages/install_poetry_mac.html)
+- [Windows and Poetry installation](./pages/install_poetry_win.md)
+- [MacOs and Poetry installation](./pages/install_poetry_mac.md)
 
 
 # How to use the tool
@@ -60,17 +60,17 @@ Depending on how you've installed the tool, to run the commands you will need to
 
 To read the instructions on how to run these commands:
 
-- [Commands for Docker and Docker Hub](./pages/docker_hub_cmds.html)
-- [Commands for Docker-compose](./pages/docker_compose_cmds.html)
-- [Commands for Poetry](./pages/poetry_cmds.html)
-- [Commands for Trezor (Poetry)](./pages/trezor_cmds.html)
+- [Commands for Docker and Docker Hub](./pages/docker_hub_cmds.md)
+- [Commands for Docker-compose](./pages/docker_compose_cmds.md)
+- [Commands for Poetry](./pages/poetry_cmds.md)
+- [Commands for Trezor (Poetry)](./pages/trezor_cmds.md)
 
 # File Format
-This tool depends on various files. To learn more about them follow this [link](./pages/file_formats.html).
+This tool depends on various files. To learn more about them follow this [link](./pages/file_formats.md).
 
 # F.A.Q
 
-For the FAQ (Frequent Asked Questions), follow this [link](./pages/faq.html)
+For the FAQ (Frequent Asked Questions), follow this [link](./pages/faq.md)
 
 # Caution Messages
 
