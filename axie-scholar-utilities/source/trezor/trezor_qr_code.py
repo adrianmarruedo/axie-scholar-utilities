@@ -6,8 +6,7 @@ from datetime import datetime
 from trezorlib.client import get_default_client
 import qrcode
 
-from axie.utils import load_json
-from trezor.trezor_utils import TrezorAxieGraphQL, CustomUI
+from axie_utils import TrezorAxieGraphQL, CustomUI
 
 
 class TrezorQRCode(TrezorAxieGraphQL):
@@ -27,19 +26,25 @@ class TrezorQRCode(TrezorAxieGraphQL):
 
 class TrezorQRCodeManager:
 
-    def __init__(self, payments_file, trezor_config):
+    def __init__(self, payments_file, trezor_config, path):
         self.trezor_config, self.acc_names = self.load_trezor_config_and_acc_name(trezor_config, payments_file)
-        self.path = os.path.dirname(trezor_config)
+        self.path = path
 
     def load_trezor_config_and_acc_name(self, trezor_config, payments_file):
-        config = load_json(trezor_config)
-        payments = load_json(payments_file)
+        config = trezor_config
+        payments = payments_file
         refined_config = {}
         acc_names = {}
-        for scholar in payments['Scholars']:
-            key = scholar['AccountAddress'].lower()
-            refined_config[key] = config[key]
-            acc_names[key] = scholar['Name']
+        if 'Manager' in payments:
+            for scholar in payments['Scholars']:
+                key = scholar['AccountAddress'].lower()
+                refined_config[key] = config[key]
+                acc_names[key] = scholar['Name']
+        else:
+            for scholar in payments['scholars']:
+                key = scholar['ronin']
+                refined_config[key] = config[key]
+                acc_names[key] = scholar['name']
         return refined_config, acc_names
 
     def verify_inputs(self):

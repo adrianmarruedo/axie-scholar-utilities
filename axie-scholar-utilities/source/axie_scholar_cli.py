@@ -1,15 +1,22 @@
 """ Axie Scholar Utilities CLI.
 This tool will help you perform various actions.
 They are: payout, claim, generate_secrets, mass_update_secrets, generate_payments, generate_QR,
-transfer_axies, axie_morphing, axie_breeding, generate_breedings
+transfer_axies, axie_morphing, axie_breeding, generate_breedings, scatter_ron and a few managed ones which mean
+they have an integration with axie.management
 
 Usage:
     axie_scholar_cli.py payout <payments_file> <secrets_file> [-y]
+    axie_scholar_cli.py managed_payout <secrets_file> <token> [-y]
+    axie_scholar_cli.py scatter_ron <payments_file> <secrets_file> <min_amount>
+    axie_scholar_cli.py managed_scatter_ron <secrets_file> <token> <min_amount>
     axie_scholar_cli.py claim <payments_file> <secrets_file> [--force]
+    axie_scholar_cli.py managed_claim <secrets_file> <token> [--force]
     axie_scholar_cli.py generate_secrets <payments_file> [<secrets_file>]
+    axie_scholar_cli.py managed_generate_secrets <secrets_file> <token>
     axie_scholar_cli.py mass_update_secrets <csv_file> <secrets_file>
     axie_scholar_cli.py generate_payments <csv_file> [<payments_file>]
     axie_scholar_cli.py generate_QR <payments_file> <secrets_file>
+    axie_scholar_cli.py managed_generate_QR <secrets_file> <token>
     axie_scholar_cli.py axie_morphing <secrets_file> <list_of_accounts>
     axie_scholar_cli.py axie_breeding <breedings_file> <secrets_file>
     axie_scholar_cli.py generate_breedings <csv_file> [<breedings_file>]
@@ -31,17 +38,20 @@ import json
 import logging
 
 from docopt import docopt
+import requests
 
 from axie import (
     AxiePaymentsManager,
     AxieClaimsManager,
     AxieTransferManager,
-    Axies,
     AxieMorphingManager,
     AxieBreedManager,
-    QRCodeManager
+    QRCodeManager,
+    ScatterRonManager
 )
 from axie.utils import load_json
+from axie_utils import Axies
+
 
 # Setup logger
 os.makedirs('logs', exist_ok=True)
@@ -62,17 +72,16 @@ def generate_transfers_file(csv_file_path, transfer_file_path=None):
             f.write("{}")
 
     transfers_dict = {}
-    with open(csv_file_path, encoding='utf-8') as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            acc = row['AccountAddress']
-            axie = row['AxieId']
-            receiver = row['ReceiverAddress']
-            ax_dict = {"AxieId": int(axie), "ReceiverAddress": receiver}
-            if acc not in transfers_dict:
-                transfers_dict[acc] = {"Transfers": [ax_dict]}
-            else:
-                transfers_dict[acc]['Transfers'].append(ax_dict)
+    reader = csv.DictReader(open(csv_file_path, encoding='utf-8'))
+    for row in reader:
+        acc = row['AccountAddress']
+        axie = row['AxieId']
+        receiver = row['ReceiverAddress']
+        ax_dict = {"AxieId": int(axie), "ReceiverAddress": receiver}
+        if acc not in transfers_dict:
+            transfers_dict[acc] = {"Transfers": [ax_dict]}
+        else:
+            transfers_dict[acc]['Transfers'].append(ax_dict)
 
     transfers_list = []
     for d in transfers_dict:
@@ -84,6 +93,21 @@ def generate_transfers_file(csv_file_path, transfer_file_path=None):
     log.info("New transfers file saved")
 
 
+def load_payments_file(token):
+    url = "https://api.axie.management/external/epithslayer/user/scholars"
+    r = requests.post(url, json={"accessToken": token})
+    if r.status_code == 500:
+        logging.critical('Something went wrong on axie.management side. Go to their Discord see what is it about!')
+    if r.status_code == 426:
+        logging.critical('You have been doing too many requests to axie.management, please wait 5min before a retry')
+    if r.status_code != 200:
+        logging.critical('Could not retrieve your information from axie.management, double check your token')
+        sys.exit()
+    # Only for testing!
+    else:
+        return r.json()
+
+
 def generate_breedings_file(csv_file_path, breeding_file_path=None):
     if not breeding_file_path:
         # Put breeding file in same folder where the csv is
@@ -92,14 +116,13 @@ def generate_breedings_file(csv_file_path, breeding_file_path=None):
         with open(breeding_file_path, 'w', encoding='utf-8') as f:
             f.write("{}")
 
-    with open(csv_file_path, encoding='utf-8') as csv_file:
-        reader = csv.DictReader(csv_file)
-        breed_list = []
-        for row in reader:
-            clean_row = {k: v for k, v in row.items() if v is not None and v != ''}
-            integer_row = {k: int(v) for k, v in clean_row.items() if v.isdigit()}
-            clean_row.update(integer_row)
-            breed_list.append(clean_row)
+    reader = csv.DictReader(open(csv_file_path, encoding='utf-8'))
+    breed_list = []
+    for row in reader:
+        clean_row = {k: v for k, v in row.items() if v is not None and v != ''}
+        integer_row = {k: int(v) for k, v in clean_row.items() if v.isdigit()}
+        clean_row.update(integer_row)
+        breed_list.append(clean_row)
 
     with open(breeding_file_path, 'w', encoding='utf-8') as f:
         json.dump(breed_list, f, ensure_ascii=False, indent=4)
@@ -127,14 +150,13 @@ def generate_payments_file(csv_file_path, payments_file_path=None):
         else:
             logging.info(f'Ronin provided ({msg}) looks wrong, try again.')
 
-    with open(csv_file_path, encoding='utf-8') as csv_file:
-        reader = csv.DictReader(csv_file)
-        scholars_list = []
-        for row in reader:
-            clean_row = {k: v for k, v in row.items() if v is not None and v != ''}
-            integer_row = {k: int(v) for k, v in clean_row.items() if v.isdigit()}
-            clean_row.update(integer_row)
-            scholars_list.append(clean_row)
+    reader = csv.DictReader(open(csv_file_path, encoding='utf-8'))
+    scholars_list = []
+    for row in reader:
+        clean_row = {k: v for k, v in row.items() if v is not None and v != ''}
+        integer_row = {k: int(v) for k, v in clean_row.items() if v.isdigit()}
+        clean_row.update(integer_row)
+        scholars_list.append(clean_row)
 
     payments_dict = {"Manager": manager_acc, "Scholars": scholars_list}
 
@@ -142,6 +164,27 @@ def generate_payments_file(csv_file_path, payments_file_path=None):
         json.dump(payments_dict, f, ensure_ascii=False, indent=4)
 
     log.info('New payments file saved')
+
+
+def generate_managed_secrets(payments, secrets_file_path):
+    secrets = load_json(secrets_file_path)
+    changed = False
+    for acc in payments['scholars']:
+        if acc['ronin'] not in secrets:
+            changed = True
+            new_secret = ''
+            while new_secret == '':
+                msg = (f"Please provide private key for account {acc['name']}. "
+                       f"({acc['ronin']}):")
+                new_secret = input(msg)
+            secrets[acc['ronin']] = new_secret
+    if changed:
+        logging.info('Saving secrets file')
+        with open(secrets_file_path, 'w', encoding='utf-8') as f:
+            json.dump(secrets, f, ensure_ascii=False, indent=4)
+        logging.info('File saved!')
+    else:
+        logging.info('Secrets file already had all needed secrets!')
 
 
 def generate_secrets_file(payments_file_path, secrets_file_path=None):
@@ -195,7 +238,7 @@ def check_file(file):
 
 def run_cli():
     """ Wrapper function for testing purposes"""
-    args = docopt(__doc__, version='Axie Scholar Payments CLI v1.15.1')
+    args = docopt(__doc__, version='Axie Scholar Payments CLI v3.0.9')
     if args['payout']:
         logging.info("I shall help you pay!")
         payments_file_path = args['<payments_file>']
@@ -204,9 +247,83 @@ def run_cli():
             logging.info('I shall pay my scholars!')
             if args['--yes']:
                 logging.info("Automatic acceptance active, it won't ask before each execution")
-            apm = AxiePaymentsManager(payments_file_path, secrets_file_path, auto=args['--yes'])
+            apm = AxiePaymentsManager(load_json(payments_file_path), load_json(secrets_file_path), auto=args['--yes'])
             apm.verify_inputs()
             apm.prepare_payout()
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    if args['managed_payout']:
+        logging.info("I shall help you pay!")
+        token = args['<token>']
+        payments = load_payments_file(token)
+        secrets_file_path = args['<secrets_file>']
+        if check_file(secrets_file_path):
+            logging.info('I shall pay my scholars!')
+            if args['--yes']:
+                logging.info("Automatic acceptance active, it won't ask before each execution")
+            apm = AxiePaymentsManager(payments, load_json(secrets_file_path), auto=args['--yes'])
+            apm.verify_inputs()
+            apm.prepare_payout()
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    elif args['scatter_ron']:
+        logging.info("I shall help you scatter ron!")
+        payments_file_path = args['<payments_file>']
+        secrets_file_path = args['<secrets_file>']
+        try:
+            min_ron = float(args['<min_amount>'])
+        except ValueError:
+            logging.warning(f"Min amount {args['min_amount']} has to be a number!")
+            sys.exit()
+        if check_file(payments_file_path) and check_file(secrets_file_path):
+            payment_account = ''
+            while payment_account == '':
+                msg = input("Provide ronin account that will provide the RON to scatter: ")
+                if len(msg) == 46 and msg.startswith('ronin:'):
+                    # Make sure is a valid Hex
+                    try:
+                        int(msg[6:], 16)
+                    except ValueError:
+                        continue
+                    payment_account = msg
+                else:
+                    logging.info(f'Ronin provided ({msg}) looks wrong, try again.')
+            logging.info('I shall scatter ron for my scholars!')
+            scm = ScatterRonManager(payment_account, load_json(payments_file_path), load_json(secrets_file_path), min_ron)
+            scm.execute()
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    elif args['managed_scatter_ron']:
+        logging.info("I shall help you scatter ron!")
+        secrets_file_path = args['<secrets_file>']
+        token = args['<token>']
+        payments = load_payments_file(token)
+        try:
+            min_ron = float(args['<min_amount>'])
+        except ValueError:
+            logging.warning(f"Min amount {args['min_amount']} has to be a number!")
+            sys.exit()
+        try:
+            min_ron = float(args['<min_amount>'])
+        except ValueError:
+            logging.warning(f"Min amount {args['min_amount']} has to be a number!")
+            sys.exit()
+        if check_file(secrets_file_path):
+            payment_account = ''
+            while payment_account == '':
+                msg = input("Provide ronin account that will provide the RON to scatter: ")
+                if len(msg) == 46 and msg.startswith('ronin:'):
+                    # Make sure is a valid Hex
+                    try:
+                        int(msg[6:], 16)
+                    except ValueError:
+                        continue
+                    payment_account = msg
+                else:
+                    logging.info(f'Ronin provided ({msg}) looks wrong, try again.')
+            logging.info('I shall scatter ron for my scholars!')
+            scm = ScatterRonManager(payment_account, payments, load_json(secrets_file_path), min_ron)
+            scm.execute()
         else:
             logging.critical("Please review your file paths and re-try.")
     elif args['claim']:
@@ -216,7 +333,20 @@ def run_cli():
         if check_file(payments_file_path) and check_file(secrets_file_path):
             # Claim SLP
             logging.info('I shall claim SLP')
-            acm = AxieClaimsManager(payments_file_path, secrets_file_path, force)
+            acm = AxieClaimsManager(load_json(payments_file_path), load_json(secrets_file_path), force)
+            acm.verify_inputs()
+            acm.prepare_claims()
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    elif args['managed_claim']:
+        token = args['<token>']
+        payments = load_payments_file(token)
+        secrets_file_path = args['<secrets_file>']
+        force = args['--force']
+        if check_file(secrets_file_path):
+            # Claim SLP
+            logging.info('I shall claim SLP')
+            acm = AxieClaimsManager(payments, load_json(secrets_file_path), force)
             acm.verify_inputs()
             acm.prepare_claims()
         else:
@@ -231,6 +361,18 @@ def run_cli():
             logging.info('If you do not know how to get your private keys, check: '
                          'https://ferranmarin.github.io/axie-scholar-utilities/pages/faq.html')
             generate_secrets_file(payments_file_path, secrets_file_path)
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    elif args['managed_generate_secrets']:
+        # Generate Secrets
+        logging.info('I shall help you generate your secrets file')
+        token = args['<token>']
+        payments = load_payments_file(token)
+        secrets_file_path = args['<secrets_file>']
+        if secrets_file_path and check_file(secrets_file_path):
+            logging.info('If you do not know how to get your private keys, check: '
+                         'https://ferranmarin.github.io/axie-scholar-utilities/pages/faq.html')
+            generate_managed_secrets(payments, secrets_file_path)
         else:
             logging.critical("Please review your file paths and re-try.")
     elif args['mass_update_secrets']:
@@ -330,7 +472,18 @@ def run_cli():
         payments_file_path = args['<payments_file>']
         secrets_file_path = args['<secrets_file>']
         if check_file(payments_file_path) and check_file(secrets_file_path):
-            qr = QRCodeManager(payments_file_path, secrets_file_path)
+            qr = QRCodeManager(load_json(payments_file_path), load_json(secrets_file_path), os.path.dirname(secrets_file_path))
+            qr.execute()
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    elif args['managed_generate_QR']:
+        # Generate QR codes
+        logging.info('I shall generate QR codes')
+        token = args['<token>']
+        payments = load_payments_file(token)
+        secrets_file_path = args['<secrets_file>']
+        if check_file(secrets_file_path):
+            qr = QRCodeManager(payments, load_json(secrets_file_path), os.path.dirname(secrets_file_path))
             qr.execute()
         else:
             logging.critical("Please review your file paths and re-try.")
