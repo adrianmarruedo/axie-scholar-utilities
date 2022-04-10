@@ -14,10 +14,22 @@ Watch out, it adds the first pair with a weird character at the beggining of the
 
     docker-compose run scholar-utilities mass_update_secrets files/mass_update.csv files/secrets.json
 
+### Scatter
+In order to have RON enough for the gas fees.
+
+    docker-compose run scholar-utilities scatter_ron files/payments.json files/secrets.json MIN_RON
+
 ### Claim SLP
 
     docker-compose run scholar-utilities claim files/payments.json files/secrets.json
+In case of error
 
-### Payout
+    docker-compose run scholar-utilities claim files/payments.json files/secrets.json --force
+
+### Payout SLP
 
     docker-compose run scholar-utilities payout files/payments.json files/secrets.json -y
+
+### Payout AXS
+
+    docker-compose run scholar-utilities payout_axs files/payments.json files/secrets.json -y
