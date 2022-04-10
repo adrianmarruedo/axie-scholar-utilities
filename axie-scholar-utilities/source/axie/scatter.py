@@ -17,8 +17,9 @@ class ScatterRonManager:
                 missing_ron = self.min_ron - check_balance(scholar['AccountAddress'], 'ron')
                 if missing_ron > 0:
                     scatter_dict[scholar['AccountAddress']] = missing_ron
+                    logging.info(f'Account {scholar["Name"]} needs {missing_ron} RON')
                 else:
-                    logging.info(f'Account {scholar["AccountAddress"]} already has more than the min ron desired')
+                    logging.info(f'Account {scholar["Name"]} already has more than the min ron desired')
         else:
             for scholar in payments['scholars']:
                 # check how much ron to scatter
