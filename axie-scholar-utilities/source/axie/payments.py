@@ -1,6 +1,7 @@
 import sys
 import logging
 from datetime import datetime
+from math import floor
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
@@ -186,9 +187,9 @@ class AxiePaymentsManager:
             # Split payments
             for sacc in acc['splits']:
                 if sacc['persona'].lower() == 'manager':
-                    amount = round(acc_balance * ((sacc['percentage'] - deductable_fees)/100))
+                    amount = floor(acc_balance * ((sacc['percentage'] - deductable_fees)/100))
                 else:
-                    amount = round(acc_balance * (sacc['percentage']/100))
+                    amount = floor(acc_balance * (sacc['percentage']/100))
                 if amount < 1:
                     logging.info(f'Important: Skipping payment to {sacc["persona"]} as it would be less than 1SLP')
                     continue
@@ -207,13 +208,13 @@ class AxiePaymentsManager:
             # Donation Payments
             if self.donations:
                 for dono in self.donations:
-                    dono_amount = round(acc_balance * (dono["percentage"]/100))
+                    dono_amount = floor(acc_balance * (dono["percentage"]/100))
                     if dono_amount > 0:
                         acc_payments[dono['ronin']] = dono_amount
                         self.summary.increase_payout(amount=dono_amount, address=dono['ronin'], payout_type='donation')
                         total_payments += dono_amount
             # Fee Payments
-            fee_amount = round(acc_balance * 0.01)
+            fee_amount = floor(acc_balance * 0.01)
             if fee_amount > 0:
                 acc_payments[CREATOR_FEE_ADDRESS] = fee_amount
                 self.summary.increase_payout(amount=fee_amount, address=CREATOR_FEE_ADDRESS, payout_type='donation')
@@ -221,7 +222,7 @@ class AxiePaymentsManager:
             if self.check_acc_has_enough_balance(acc['ronin'], total_payments) and acc_balance > 0:
                 accept = "y" if self.auto else None
                 while accept not in ["y", "n", "Y", "N"]:
-                    accept = input("Do you want to proceed with these transactions?(y/n): ")
+                    accept = input(f"Do you want to proceed with payments for {acc['name']} ({acc_payments})? (y/n): ")
                 if accept.lower() == "y":
                     s = Scatter('slp', acc['ronin'], self.secrets_file[acc['ronin']], acc_payments)
                     s.execute()
@@ -278,7 +279,7 @@ class AxiePaymentsManager:
             if self.check_acc_has_enough_balance(acc['AccountAddress'], total_payments) and acc_balance > 0:
                 accept = "y" if self.auto else None
                 while accept not in ["y", "n", "Y", "N"]:
-                    accept = input("Do you want to proceed with these transactions?(y/n): ")
+                    accept = input(f"Do you want to proceed with payments for {acc['Name']} ({acc_payments})? (y/n): ")
                 if accept.lower() == "y":
                     s = Scatter('slp', acc['AccountAddress'], self.secrets_file[acc['AccountAddress']], acc_payments)
                     s.execute()
@@ -349,4 +350,8 @@ class PaymentsSummary(Singleton):
             msg += f'Paid {len(self.other["accounts"])} other accounts, {self.other["slp"]} SLP.\n'
         if self.donations["slp"] > 0:
             msg += f'Donated to {len(self.donations["accounts"])} organisations, {self.donations["slp"]} SLP.\n'
+
+        # TODO: Find a fix for this!
+        msg += "---------------------- \n"
+        msg += "This summary assumes all trasactions went fine, please do NOT trust it!\n"
         return msg

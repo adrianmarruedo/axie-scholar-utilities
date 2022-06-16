@@ -1,4 +1,4 @@
-__version__ = '3.0.9'
+__version__ = '3.2.2'
 __all__ = [
     'AxiePaymentsManager',
     'AxieClaimsManager',
