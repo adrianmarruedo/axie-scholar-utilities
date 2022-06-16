@@ -156,7 +156,7 @@ def generate_payments_file(csv_file_path, payments_file_path=None):
     scholars_list = []
     for row in reader:
         clean_row = {k: v for k, v in row.items() if v is not None and v != ''}
-        integer_row = {k: int(v) for k, v in clean_row.items() if v.isdigit()}
+        integer_row = {k: int(v) for k, v in clean_row.items() if v.isdigit() and k != "Name"}
         clean_row.update(integer_row)
         scholars_list.append(clean_row)
 
@@ -240,7 +240,7 @@ def check_file(file):
 
 def run_cli():
     """ Wrapper function for testing purposes"""
-    args = docopt(__doc__, version='Axie Scholar Payments CLI v3.0.9')
+    args = docopt(__doc__, version='Axie Scholar Payments CLI v3.2.2')
     if args['payout']:
         logging.info("I shall help you pay!")
         payments_file_path = args['<payments_file>']
