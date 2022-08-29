@@ -6,6 +6,7 @@ they have an integration with axie.management
 
 Usage:
     axie_scholar_cli.py payout <payments_file> <secrets_file> [-y]
+    axie_scholar_cli.py payout_axs <payments_file> <secrets_file> [-y]
     axie_scholar_cli.py managed_payout <secrets_file> <token> [-y]
     axie_scholar_cli.py scatter_ron <payments_file> <secrets_file> <min_amount>
     axie_scholar_cli.py managed_scatter_ron <secrets_file> <token> <min_amount>
@@ -42,6 +43,7 @@ import requests
 
 from axie import (
     AxiePaymentsManager,
+    AxiePaymentsManagerAXS,
     AxieClaimsManager,
     AxieTransferManager,
     AxieMorphingManager,
@@ -248,6 +250,19 @@ def run_cli():
             if args['--yes']:
                 logging.info("Automatic acceptance active, it won't ask before each execution")
             apm = AxiePaymentsManager(load_json(payments_file_path), load_json(secrets_file_path), auto=args['--yes'])
+            apm.verify_inputs()
+            apm.prepare_payout()
+        else:
+            logging.critical("Please review your file paths and re-try.")
+    if args['payout_axs']:
+        logging.info("I shall help you pay AXS!")
+        payments_file_path = args['<payments_file>']
+        secrets_file_path = args['<secrets_file>']
+        if check_file(payments_file_path) and check_file(secrets_file_path):
+            logging.info('I shall pay my scholars!')
+            if args['--yes']:
+                logging.info("Automatic acceptance active, it won't ask before each execution")
+            apm = AxiePaymentsManagerAXS(load_json(payments_file_path), load_json(secrets_file_path), auto=args['--yes'])
             apm.verify_inputs()
             apm.prepare_payout()
         else:

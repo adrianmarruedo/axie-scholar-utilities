@@ -1,7 +1,6 @@
 import sys
 import logging
 from datetime import datetime
-from math import floor
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
@@ -23,7 +22,7 @@ file_handler.addFilter(ImportantLogsFilter())
 logger.addHandler(file_handler)
 
 
-class AxiePaymentsManager:
+class AxiePaymentsManagerAXS:
     def __init__(self, payments_file, secrets_file, auto=False):
         self.payments_file = payments_file
         self.secrets_file = secrets_file
@@ -157,15 +156,15 @@ class AxiePaymentsManager:
             self.scholar_accounts = self.payments_file["scholars"]
         logging.info("Files correctly validated!")
 
-    def check_acc_has_enough_balance(self, account, balance):
-        account_balance = check_balance(account)
+    def check_acc_has_enough_balance(self, account, balance, token='axs'):
+        account_balance = check_balance(account, token=token)
         if account_balance < balance:
             logging.critical(f"Balance in account {account} is "
                              "inssuficient to cover all planned payments!")
             return False
         elif account_balance - balance > 0:
-            logging.info(f'These payments will leave {account_balance - balance} SLP in your wallet.'
-                         'Cancel payments and adjust payments if you want to leave 0 SLP in it.')
+            logging.info(f'These payments will leave {account_balance - balance} AXS in your wallet.'
+                         'Cancel payments and adjust payments if you want to leave 0 AXS in it.')
         return True
 
     def prepare_payout(self):
@@ -178,7 +177,7 @@ class AxiePaymentsManager:
 
     def prepare_new_payout(self):
         for acc in self.scholar_accounts:
-            acc_balance = check_balance(acc['ronin'])
+            acc_balance = check_balance(acc['ronin'], token='axs')
             total_payments = 0
             acc_payments = {}
             deductable_fees = 1
@@ -187,9 +186,9 @@ class AxiePaymentsManager:
             # Split payments
             for sacc in acc['splits']:
                 if sacc['persona'].lower() == 'manager':
-                    amount = floor(acc_balance * ((sacc['percentage'] - deductable_fees)/100))
+                    amount = round(acc_balance * ((sacc['percentage'] - deductable_fees)/100))
                 else:
-                    amount = floor(acc_balance * (sacc['percentage']/100))
+                    amount = round(acc_balance * (sacc['percentage']/100))
                 if amount < 1:
                     logging.info(f'Important: Skipping payment to {sacc["persona"]} as it would be less than 1SLP')
                     continue
@@ -208,13 +207,13 @@ class AxiePaymentsManager:
             # Donation Payments
             if self.donations:
                 for dono in self.donations:
-                    dono_amount = floor(acc_balance * (dono["percentage"]/100))
+                    dono_amount = round(acc_balance * (dono["percentage"]/100))
                     if dono_amount > 0:
                         acc_payments[dono['ronin']] = dono_amount
                         self.summary.increase_payout(amount=dono_amount, address=dono['ronin'], payout_type='donation')
                         total_payments += dono_amount
             # Fee Payments
-            fee_amount = floor(acc_balance * 0.01)
+            fee_amount = round(acc_balance * 0.01)
             if fee_amount > 0:
                 acc_payments[CREATOR_FEE_ADDRESS] = fee_amount
                 self.summary.increase_payout(amount=fee_amount, address=CREATOR_FEE_ADDRESS, payout_type='donation')
@@ -222,18 +221,18 @@ class AxiePaymentsManager:
             if self.check_acc_has_enough_balance(acc['ronin'], total_payments) and acc_balance > 0:
                 accept = "y" if self.auto else None
                 while accept not in ["y", "n", "Y", "N"]:
-                    accept = input(f"Do you want to proceed with payments for {acc['name']} ({acc_payments})? (y/n): ")
+                    accept = input("Do you want to proceed with these transactions?(y/n): ")
                 if accept.lower() == "y":
-                    s = Scatter('slp', acc['ronin'], self.secrets_file[acc['ronin']], acc_payments)
+                    s = Scatter('axs', acc['ronin'], self.secrets_file[acc['ronin']], acc_payments)
                     s.execute()
-                    logging.info(f"SLP scatter completed for account: '{acc['name']}'")
+                    logging.info(f"AXS scatter completed for account: '{acc['name']}'")
                 else:
-                    logging.info(f"SLP scatter canceled for account: '{acc['name']}'")
+                    logging.info(f"AXS scatter canceled for account: '{acc['name']}'")
         logging.info(f"Important: Transactions Summary:\n {self.summary}")
 
     def prepare_old_payout(self):
         for acc in self.scholar_accounts:
-            acc_balance = check_balance(acc['AccountAddress'])
+            acc_balance = check_balance(acc['AccountAddress'], token='axs')
             total_payments = 0
             acc_payments = {}
             # Scholar Payment
@@ -279,24 +278,24 @@ class AxiePaymentsManager:
             if self.check_acc_has_enough_balance(acc['AccountAddress'], total_payments) and acc_balance > 0:
                 accept = "y" if self.auto else None
                 while accept not in ["y", "n", "Y", "N"]:
-                    accept = input(f"Do you want to proceed with payments for {acc['Name']} ({acc_payments})? (y/n): ")
+                    accept = input("Do you want to proceed with these transactions?(y/n): ")
                 if accept.lower() == "y":
-                    s = Scatter('slp', acc['AccountAddress'], self.secrets_file[acc['AccountAddress']], acc_payments)
+                    s = Scatter('axs', acc['AccountAddress'], self.secrets_file[acc['AccountAddress']], acc_payments)
                     s.execute()
-                    logging.info(f"SLP scatter completed for account: '{acc['Name']}'")
+                    logging.info(f"AXS scatter completed for account: '{acc['Name']}'")
                 else:
-                    logging.info(f"SLP scatter canceled for account: '{acc['Name']}'")
+                    logging.info(f"AXS scatter canceled for account: '{acc['Name']}'")
         logging.info(f"Important: Transactions Summary:\n {self.summary}")
 
 
 class PaymentsSummary(Singleton):
 
     def __init__(self):
-        self.manager = {"accounts": [], "slp": 0}
-        self.trainer = {"accounts": [], "slp": 0}
-        self.scholar = {"accounts": [], "slp": 0}
-        self.other = {"accounts": [], "slp": 0}
-        self.donations = {"accounts": [], "slp": 0}
+        self.manager = {"accounts": [], "axs": 0}
+        self.trainer = {"accounts": [], "axs": 0}
+        self.scholar = {"accounts": [], "axs": 0}
+        self.other = {"accounts": [], "axs": 0}
+        self.donations = {"accounts": [], "axs": 0}
 
     def increase_payout(self, amount, address, payout_type):
         if payout_type == "manager":
@@ -311,47 +310,43 @@ class PaymentsSummary(Singleton):
             self.increase_other_payout(amount, address)
 
     def increase_manager_payout(self, amount, address):
-        self.manager["slp"] += amount
+        self.manager["axs"] += amount
         if address not in self.manager["accounts"]:
             self.manager["accounts"].append(address)
 
     def increase_trainer_payout(self, amount, address):
-        self.trainer["slp"] += amount
+        self.trainer["axs"] += amount
         if address not in self.trainer["accounts"]:
             self.trainer["accounts"].append(address)
 
     def increase_scholar_payout(self, amount, address):
-        self.scholar["slp"] += amount
+        self.scholar["axs"] += amount
         if address not in self.scholar["accounts"]:
             self.scholar["accounts"].append(address)
 
     def increase_donations_payout(self, amount, address):
-        self.donations["slp"] += amount
+        self.donations["axs"] += amount
         if address not in self.donations["accounts"]:
             self.donations["accounts"].append(address)
     
     def increase_other_payout(self, amount, address):
-        self.other["slp"] += amount
+        self.other["axs"] += amount
         if address not in self.other["accounts"]:
             self.other["accounts"].append(address)
 
     def __str__(self):
         msg = "No payments made!"
         if self.manager["accounts"] and self.scholar["accounts"]:
-            msg = f'Paid {len(self.manager["accounts"])} managers, {self.manager["slp"]} SLP.\n'
-            msg += f'Paid {len(self.scholar["accounts"])} scholars, {self.scholar["slp"]} SLP.\n'
+            msg = f'Paid {len(self.manager["accounts"])} managers, {self.manager["axs"]} AXS.\n'
+            msg += f'Paid {len(self.scholar["accounts"])} scholars, {self.scholar["axs"]} AXS.\n'
         if self.manager["accounts"] and not self.scholar["accounts"]:
-            msg = f'Paid {len(self.manager["accounts"])} managers, {self.manager["slp"]} SLP.\n'
+            msg = f'Paid {len(self.manager["accounts"])} managers, {self.manager["axs"]} AXS.\n'
         if self.scholar["accounts"] and not self.manager["accounts"]:
-            msg = f'Paid {len(self.scholar["accounts"])} scholars, {self.scholar["slp"]} SLP.\n'
-        if self.trainer["slp"] > 0:
-            msg += f'Paid {len(self.trainer["accounts"])} trainers, {self.trainer["slp"]} SLP.\n'
-        if self.other["slp"] > 0:
-            msg += f'Paid {len(self.other["accounts"])} other accounts, {self.other["slp"]} SLP.\n'
-        if self.donations["slp"] > 0:
-            msg += f'Donated to {len(self.donations["accounts"])} organisations, {self.donations["slp"]} SLP.\n'
-
-        # TODO: Find a fix for this!
-        msg += "---------------------- \n"
-        msg += "This summary assumes all trasactions went fine, please do NOT trust it!\n"
+            msg = f'Paid {len(self.scholar["accounts"])} scholars, {self.scholar["axs"]} AXS.\n'
+        if self.trainer["axs"] > 0:
+            msg += f'Paid {len(self.trainer["accounts"])} trainers, {self.trainer["axs"]} AXS.\n'
+        if self.other["axs"] > 0:
+            msg += f'Paid {len(self.other["accounts"])} other accounts, {self.other["axs"]} AXS.\n'
+        if self.donations["axs"] > 0:
+            msg += f'Donated to {len(self.donations["accounts"])} organisations, {self.donations["axs"]} AXS.\n'
         return msg

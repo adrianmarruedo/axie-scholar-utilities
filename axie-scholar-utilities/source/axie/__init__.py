@@ -1,6 +1,7 @@
 __version__ = '3.2.2'
 __all__ = [
     'AxiePaymentsManager',
+    'AxiePaymentsManagerAXS',
     'AxieClaimsManager',
     'AxieTransferManager',
     'AxieMorphingManager',
@@ -10,6 +11,7 @@ __all__ = [
 ]
 
 from axie.payments import AxiePaymentsManager
+from axie.payments_axs import AxiePaymentsManagerAXS
 from axie.claims import AxieClaimsManager
 from axie.transfers import AxieTransferManager
 from axie.scatter import ScatterRonManager
